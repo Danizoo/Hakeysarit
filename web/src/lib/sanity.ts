@@ -1,5 +1,5 @@
 import { createClient } from '@sanity/client';
-import imageUrlBuilder from '@sanity/image-url';
+import { createImageUrlBuilder } from '@sanity/image-url';
 import { toHTML } from '@portabletext/to-html';
 import type { Photo } from './types';
 
@@ -36,7 +36,7 @@ export const writeClient =
       })
     : null;
 
-const builder = sanityConfigured ? imageUrlBuilder({ projectId, dataset }) : null;
+const builder = sanityConfigured ? createImageUrlBuilder({ projectId, dataset }) : null;
 
 type SanityImageValue = {
   asset?: { _ref?: string; url?: string; metadata?: { lqip?: string; dimensions?: { width: number; height: number } } };
