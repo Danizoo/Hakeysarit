@@ -1,0 +1,36 @@
+---
+import Base from '../../layouts/Base.astro';
+import PostCard from '../../components/PostCard.astro';
+import { getPosts } from '../../lib/content';
+
+const posts = await getPosts();
+const [lead, ...rest] = posts;
+---
+
+<Base title="הכתבות" description="מחשבות, תהיות, וכתיבה על כל מה שעובר לי בראש.">
+  <section class="mx-auto max-w-5xl px-4 pt-10 pb-16 sm:px-6 sm:pt-14">
+    <header class="mb-8 max-w-2xl">
+      <h1 class="font-display text-3xl text-ink sm:text-4xl">מהמחברת</h1>
+      <p class="mt-2 text-[15px] leading-relaxed text-ink-soft sm:text-base">
+        מחשבות, תהיות, ודברים שראיתי בדרך. לא הכול קשור לאוכל.
+      </p>
+    </header>
+
+    {
+      posts.length === 0 ? (
+        <p class="card p-10 text-center text-ink-faint">עוד לא נכתב כאן דבר. בקרוב.</p>
+      ) : (
+        <div class="space-y-5">
+          <PostCard post={lead} featured />
+          {rest.length > 0 && (
+            <div class="grid gap-5 md:grid-cols-2">
+              {rest.map((post) => (
+                <PostCard post={post} />
+              ))}
+            </div>
+          )}
+        </div>
+      )
+    }
+  </section>
+</Base>

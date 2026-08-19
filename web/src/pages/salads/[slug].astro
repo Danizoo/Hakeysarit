@@ -1,0 +1,230 @@
+---
+import Base from '../../layouts/Base.astro';
+import ScoreBadge from '../../components/ScoreBadge.astro';
+import SaladMap from '../../components/SaladMap.astro';
+import Wreath from '../../components/Wreath.astro';
+import { getSalads } from '../../lib/content';
+import { formatDate, formatPrice, formatScore, scoreBand } from '../../lib/format';
+import { SUB_SCORE_LABELS, type SubScores } from '../../lib/types';
+
+export async function getStaticPaths() {
+  const salads = await getSalads();
+  return salads.map((salad, index) => ({
+    params: { slug: salad.slug },
+    props: {
+      salad,
+      previous: salads[index + 1] ?? null,
+      next: salads[index - 1] ?? null,
+    },
+  }));
+}
+
+const { salad, previous, next } = Astro.props;
+const band = scoreBand(salad.score);
+const [hero, ...gallery] = salad.photos;
+
+const subScores = Object.entries(salad.subScores ?? {}).filter(
+  ([, value]) => typeof value === 'number',
+) as Array<[keyof SubScores, number]>;
+
+const mapsHref =
+  salad.lat != null && salad.lng != null
+    ? `https://www.google.com/maps/search/?api=1&query=${salad.lat},${salad.lng}`
+    : salad.mapsUrl ??
+      `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+        [salad.restaurant, salad.address, salad.city].filter(Boolean).join(' '),
+      )}`;
+
+const wazeHref =
+  salad.lat != null && salad.lng != null
+    ? `https://waze.com/ul?ll=${salad.lat},${salad.lng}&navigate=yes`
+    : undefined;
+
+const description = salad.verdict ?? `סלט קיסר ב${salad.restaurant} — ציון ${formatScore(salad.score)} מתוך 10.`;
+---
+
+<Base title={salad.restaurant} description={description} image={hero?.src}>
+  <article class="mx-auto max-w-3xl px-4 pt-6 pb-16 sm:px-6 sm:pt-10">
+    <a href="/salads" class="inline-flex items-center gap-1.5 text-sm text-ink-faint hover:text-romaine-700">
+      <span aria-hidden="true">→</span> חזרה לכל הסלטים
+    </a>
+
+    <!-- ---------- header ---------- -->
+    <header class="mt-5">
+      <div class="flex items-start justify-between gap-4">
+        <div class="min-w-0">
+          <h1 class="font-display text-3xl leading-tight text-ink sm:text-5xl">{salad.restaurant}</h1>
+          <p class="mt-2 text-sm text-ink-faint sm:text-[15px]">
+            {[salad.address, salad.city].filter(Boolean).join(', ')}
+            {salad.visitedAt && (
+              <>
+                <span class="mx-1.5" aria-hidden="true">·</span>
+                <time datetime={salad.visitedAt}>{formatDate(salad.visitedAt)}</time>
+              </>
+            )}
+          </p>
+        </div>
+        <ScoreBadge score={salad.score} size="lg" class="shrink-0" />
+      </div>
+
+      <p class="mt-4 font-display text-lg font-bold sm:text-xl" style={`color:${band.fg}`}>{band.label}</p>
+    </header>
+
+    <!-- ---------- photos ---------- -->
+    {
+      hero ? (
+        <figure class="mt-7">
+          <img
+            src={hero.src}
+            alt={hero.alt}
+            width={hero.width}
+            height={hero.height}
+            class="w-full rounded-3xl border border-line object-cover shadow-[0_18px_50px_-30px_rgba(29,36,25,0.55)]"
+            style={hero.lqip ? `background-image:url(${hero.lqip});background-size:cover` : undefined}
+          />
+        </figure>
+      ) : (
+        <div
+          class="mt-7 grid aspect-[16/9] w-full place-items-center rounded-3xl border border-line"
+          style="background:linear-gradient(140deg,#e8f0e4,#f6f2e4 55%,#f3e7c9)"
+        >
+          <span class="text-romaine-200"><Wreath size={96} /></span>
+        </div>
+      )
+    }
+
+    {
+      gallery.length > 0 && (
+        <div class="mt-3 grid grid-cols-3 gap-3">
+          {gallery.map((photo) => (
+            <img
+              src={photo.thumb}
+              alt={photo.alt}
+              loading="lazy"
+              decoding="async"
+              class="aspect-square w-full rounded-2xl border border-line object-cover"
+            />
+          ))}
+        </div>
+      )
+    }
+
+    <!-- ---------- verdict ---------- -->
+    {
+      salad.verdict && (
+        <p class="mt-8 border-r-[3px] border-gold-soft pr-4 font-display text-xl leading-relaxed text-ink sm:text-2xl">
+          {salad.verdict}
+        </p>
+      )
+    }
+
+    <!-- ---------- facts ---------- -->
+    <dl class="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {
+        salad.price != null && (
+          <div class="card p-4">
+            <dt class="text-xs text-ink-faint">מחיר</dt>
+            <dd class="mt-1 font-display text-xl text-ink tabular-nums">{formatPrice(salad.price)}</dd>
+          </div>
+        )
+      }
+      {
+        salad.wouldReturn != null && (
+          <div class="card p-4">
+            <dt class="text-xs text-ink-faint">אחזור לשם?</dt>
+            <dd class="mt-1 font-display text-xl" style={`color:${salad.wouldReturn ? '#3a5f31' : '#b0552c'}`}>
+              {salad.wouldReturn ? 'בהחלט' : 'לא'}
+            </dd>
+          </div>
+        )
+      }
+      {
+        salad.city && (
+          <div class="card p-4">
+            <dt class="text-xs text-ink-faint">איפה</dt>
+            <dd class="mt-1 font-display text-xl text-ink">{salad.city}</dd>
+          </div>
+        )
+      }
+      <div class="card p-4">
+        <dt class="text-xs text-ink-faint">הציון</dt>
+        <dd class="mt-1 font-display text-xl text-ink tabular-nums">{formatScore(salad.score)} / 10</dd>
+      </div>
+    </dl>
+
+    <!-- ---------- the review ---------- -->
+    {salad.bodyHtml && <div class="prose-hk mt-9" set:html={salad.bodyHtml} />}
+
+    <!-- ---------- component scores ---------- -->
+    {
+      subScores.length > 0 && (
+        <section class="card mt-10 p-5 sm:p-7">
+          <h2 class="font-display text-xl text-ink">איך זה מתחלק</h2>
+          <ul class="mt-5 space-y-3.5">
+            {subScores.map(([key, value]) => (
+              <li class="flex items-center gap-3">
+                <span class="w-24 shrink-0 text-sm text-ink-soft sm:w-32">{SUB_SCORE_LABELS[key]}</span>
+                <span class="h-2.5 flex-1 overflow-hidden rounded-full bg-romaine-50">
+                  <span
+                    class="block h-full rounded-full"
+                    style={`width:${value * 10}%;background:${scoreBand(value).bg}`}
+                  />
+                </span>
+                <span class="w-8 shrink-0 text-end text-sm font-medium text-ink tabular-nums">
+                  {formatScore(value)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+
+    <!-- ---------- where ---------- -->
+    <section class="mt-10">
+      <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h2 class="font-display text-xl text-ink">איך מגיעים</h2>
+        <div class="flex gap-2">
+          <a href={mapsHref} target="_blank" rel="noopener noreferrer" class="chip">גוגל מפות</a>
+          {wazeHref && (
+            <a href={wazeHref} target="_blank" rel="noopener noreferrer" class="chip">
+              Waze
+            </a>
+          )}
+        </div>
+      </div>
+
+      {
+        salad.lat != null && salad.lng != null ? (
+          <SaladMap salads={[salad]} heightClass="h-[300px] sm:h-[360px]" />
+        ) : (
+          <p class="card p-6 text-center text-sm text-ink-faint">
+            {[salad.address, salad.city].filter(Boolean).join(', ') || 'הכתובת עוד לא הוזנה.'}
+          </p>
+        )
+      }
+    </section>
+
+    <!-- ---------- neighbours ---------- -->
+    {
+      (previous || next) && (
+        <nav class="mt-12 grid gap-3 border-t border-line pt-8 sm:grid-cols-2" aria-label="ניווט בין סלטים">
+          {next ? (
+            <a href={`/salads/${next.slug}`} class="card card-hover p-4">
+              <span class="text-xs text-ink-faint">הסלט הבא</span>
+              <span class="mt-1 block font-display text-lg text-ink">{next.restaurant}</span>
+            </a>
+          ) : (
+            <span />
+          )}
+          {previous && (
+            <a href={`/salads/${previous.slug}`} class="card card-hover p-4 sm:text-end">
+              <span class="text-xs text-ink-faint">הסלט הקודם</span>
+              <span class="mt-1 block font-display text-lg text-ink">{previous.restaurant}</span>
+            </a>
+          )}
+        </nav>
+      )
+    }
+  </article>
+</Base>

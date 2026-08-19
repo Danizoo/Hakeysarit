@@ -1,0 +1,18 @@
+---
+import Base from '../layouts/Base.astro';
+import Wreath from '../components/Wreath.astro';
+---
+
+<Base title="הדף לא נמצא" description="הדף שחיפשת לא קיים.">
+  <section class="mx-auto grid max-w-xl place-items-center px-4 py-24 text-center sm:px-6">
+    <span class="text-romaine-200"><Wreath size={80} /></span>
+    <h1 class="mt-5 font-display text-4xl text-ink sm:text-5xl">404</h1>
+    <p class="mt-3 text-[15px] leading-relaxed text-ink-soft">
+      הדף הזה לא קיים. קורה גם לסלטים הכי טובים.
+    </p>
+    <div class="mt-7 flex flex-wrap justify-center gap-3">
+      <a href="/" class="btn btn-primary">לדף הבית</a>
+      <a href="/salads" class="btn btn-ghost">לכל הסלטים</a>
+    </div>
+  </section>
+</Base>

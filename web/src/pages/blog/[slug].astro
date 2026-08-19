@@ -1,0 +1,84 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getPosts } from '../../lib/content';
+import { formatDate } from '../../lib/format';
+
+export async function getStaticPaths() {
+  const posts = await getPosts();
+  return posts.map((post, index) => ({
+    params: { slug: post.slug },
+    props: {
+      post,
+      previous: posts[index + 1] ?? null,
+      next: posts[index - 1] ?? null,
+    },
+  }));
+}
+
+const { post, previous, next } = Astro.props;
+---
+
+<Base title={post.title} description={post.excerpt} image={post.cover?.src}>
+  <article class="mx-auto max-w-2xl px-4 pt-6 pb-16 sm:px-6 sm:pt-10">
+    <a href="/blog" class="inline-flex items-center gap-1.5 text-sm text-ink-faint hover:text-romaine-700">
+      <span aria-hidden="true">→</span> חזרה לכתבות
+    </a>
+
+    <header class="mt-5">
+      <p class="flex items-center gap-2 text-xs text-ink-faint">
+        {post.publishedAt && <time datetime={post.publishedAt}>{formatDate(post.publishedAt)}</time>}
+        <span aria-hidden="true">·</span>
+        <span>{post.readingMinutes} דק׳ קריאה</span>
+      </p>
+
+      <h1 class="mt-3 font-display text-3xl leading-tight text-ink sm:text-5xl">{post.title}</h1>
+
+      {post.excerpt && <p class="mt-4 text-lg leading-relaxed text-ink-soft">{post.excerpt}</p>}
+    </header>
+
+    {
+      post.cover && (
+        <img
+          src={post.cover.src}
+          alt={post.cover.alt}
+          width={post.cover.width}
+          height={post.cover.height}
+          class="mt-8 w-full rounded-3xl border border-line object-cover shadow-[0_18px_50px_-30px_rgba(29,36,25,0.55)]"
+        />
+      )
+    }
+
+    {post.bodyHtml && <div class="prose-hk mt-8" set:html={post.bodyHtml} />}
+
+    {
+      post.tags.length > 0 && (
+        <ul class="mt-10 flex flex-wrap gap-2">
+          {post.tags.map((tag) => (
+            <li class="rounded-full bg-romaine-50 px-3 py-1 text-[13px] text-romaine-700">{tag}</li>
+          ))}
+        </ul>
+      )
+    }
+
+    {
+      (previous || next) && (
+        <nav class="mt-12 grid gap-3 border-t border-line pt-8 sm:grid-cols-2" aria-label="ניווט בין כתבות">
+          {next ? (
+            <a href={`/blog/${next.slug}`} class="card card-hover p-4">
+              <span class="text-xs text-ink-faint">הכתבה הבאה</span>
+              <span class="mt-1 block font-display text-lg text-ink">{next.title}</span>
+            </a>
+          ) : (
+            <span />
+          )}
+          {previous && (
+            <a href={`/blog/${previous.slug}`} class="card card-hover p-4 sm:text-end">
+              <span class="text-xs text-ink-faint">הכתבה הקודמת</span>
+              <span class="mt-1 block font-display text-lg text-ink">{previous.title}</span>
+            </a>
+          )}
+        </nav>
+      )
+    }
+  </article>
+</Base>

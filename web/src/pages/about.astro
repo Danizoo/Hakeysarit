@@ -1,0 +1,74 @@
+---
+import Base from '../layouts/Base.astro';
+import Wreath from '../components/Wreath.astro';
+import { getSalads, getSettings } from '../lib/content';
+
+const [settings, salads] = await Promise.all([getSettings(), getSalads()]);
+const best = [...salads].sort((a, b) => b.score - a.score)[0];
+---
+
+<Base title={settings.aboutTitle} description={settings.tagline}>
+  <section class="mx-auto max-w-2xl px-4 pt-12 pb-16 sm:px-6 sm:pt-16">
+    <div class="flex flex-col items-center text-center">
+      {
+        settings.portrait ? (
+          <img
+            src={settings.portrait.thumb}
+            alt={settings.portrait.alt || settings.title}
+            class="h-28 w-28 rounded-full border-4 border-parchment object-cover shadow-lg sm:h-32 sm:w-32"
+          />
+        ) : (
+          <span class="text-romaine-400">
+            <Wreath size={72} />
+          </span>
+        )
+      }
+
+      <h1 class="mt-5 font-display text-3xl text-ink sm:text-4xl">{settings.aboutTitle}</h1>
+      <p class="mt-2 text-[15px] text-ink-faint">{settings.tagline}</p>
+    </div>
+
+    {
+      settings.aboutHtml ? (
+        <div class="prose-hk mt-9" set:html={settings.aboutHtml} />
+      ) : (
+        <p class="prose-hk mt-9">עוד לא כתבתי כאן כלום. בקרוב.</p>
+      )
+    }
+
+    {
+      settings.scaleNote && (
+        <aside class="card mt-9 p-5 sm:p-6">
+          <h2 class="font-display text-lg text-ink">על שיטת הדירוג</h2>
+          <p class="mt-2 text-[15px] leading-relaxed text-ink-soft">{settings.scaleNote}</p>
+          {best && (
+            <p class="mt-3 text-sm text-ink-faint">
+              הציון הגבוה ביותר עד היום שייך ל
+              <a class="text-romaine-700 hover:underline" href={`/salads/${best.slug}`}>
+                {best.restaurant}
+              </a>
+              .
+            </p>
+          )}
+        </aside>
+      )
+    }
+
+    {
+      (settings.email || settings.instagram) && (
+        <div class="mt-9 flex flex-wrap justify-center gap-3">
+          {settings.email && (
+            <a class="btn btn-primary" href={`mailto:${settings.email}`}>
+              כתבו לי
+            </a>
+          )}
+          {settings.instagram && (
+            <a class="btn btn-ghost" href={settings.instagram} target="_blank" rel="noopener noreferrer">
+              אינסטגרם
+            </a>
+          )}
+        </div>
+      )
+    }
+  </section>
+</Base>

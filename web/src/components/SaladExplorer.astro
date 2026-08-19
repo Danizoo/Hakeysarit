@@ -1,0 +1,230 @@
+---
+import SaladCard from './SaladCard.astro';
+import SaladMap from './SaladMap.astro';
+import { collectCities } from '../lib/content';
+import type { Salad } from '../lib/types';
+
+interface Props {
+  salads: Salad[];
+}
+
+const { salads } = Astro.props;
+const cities = collectCities(salads);
+const hasMap = salads.some((salad) => salad.lat != null && salad.lng != null);
+---
+
+<div data-explorer>
+  <!-- ---------- controls ---------- -->
+  <div class="card mb-6 p-3 sm:p-4">
+    <div class="flex flex-col gap-3">
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div class="relative flex-1">
+          <svg
+            class="pointer-events-none absolute top-1/2 right-3.5 h-4 w-4 -translate-y-1/2 text-ink-faint"
+            viewBox="0 0 20 20"
+            fill="none"
+            aria-hidden="true"
+          >
+            <circle cx="9" cy="9" r="6" stroke="currentColor" stroke-width="1.6"></circle>
+            <path d="m13.5 13.5 3 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"></path>
+          </svg>
+          <input
+            type="search"
+            id="hk-search"
+            placeholder="חיפוש מסעדה או עיר…"
+            aria-label="חיפוש מסעדה או עיר"
+            class="w-full rounded-full border border-line bg-cream/60 py-2.5 pr-10 pl-4 text-[15px] text-ink placeholder:text-ink-faint focus:border-romaine-400 focus:bg-parchment focus:outline-none"
+          />
+        </div>
+
+        <div class="flex items-center gap-2">
+          <label for="hk-sort" class="sr-only">מיון</label>
+          <select
+            id="hk-sort"
+            class="flex-1 cursor-pointer rounded-full border border-line bg-parchment px-4 py-2.5 text-[15px] text-ink focus:border-romaine-400 focus:outline-none sm:flex-none"
+          >
+            <option value="score">הכי טעים</option>
+            <option value="recent">הכי חדש</option>
+            <option value="price">הכי זול</option>
+            <option value="name">לפי שם</option>
+          </select>
+
+          {
+            hasMap && (
+              <div class="flex shrink-0 rounded-full border border-line bg-cream/60 p-1" role="group" aria-label="תצוגה">
+                <button type="button" data-view="grid" aria-pressed="true" class="rounded-full px-3.5 py-1.5 text-sm transition-colors">
+                  רשימה
+                </button>
+                <button type="button" data-view="map" aria-pressed="false" class="rounded-full px-3.5 py-1.5 text-sm transition-colors">
+                  מפה
+                </button>
+              </div>
+            )
+          }
+        </div>
+      </div>
+
+      {
+        (cities.length > 1 || salads.length > 3) && (
+          <div class="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <button type="button" class="chip" data-city-filter="" aria-pressed="true">
+              הכול
+            </button>
+            {cities.map((city) => (
+              <button type="button" class="chip" data-city-filter={city} aria-pressed="false">
+                {city}
+              </button>
+            ))}
+            <span class="mx-1 w-px shrink-0 bg-line" aria-hidden="true" />
+            <button type="button" class="chip" data-top-filter aria-pressed="false">
+              ⭐ רק 8 ומעלה
+            </button>
+          </div>
+        )
+      }
+    </div>
+  </div>
+
+  <p class="mb-4 px-1 text-sm text-ink-faint" data-count aria-live="polite"></p>
+
+  <!-- ---------- results ---------- -->
+  <div data-panel="grid">
+    <div class="grid gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3" data-grid>
+      {salads.map((salad, index) => <SaladCard salad={salad} eager={index < 3} />)}
+    </div>
+
+    <p class="card hidden p-10 text-center text-ink-faint" data-empty>
+      לא נמצא סלט שמתאים לחיפוש. אולי כדאי לנסות מילה אחרת?
+    </p>
+  </div>
+
+  {
+    hasMap && (
+      <div data-panel="map" hidden>
+        <SaladMap salads={salads} />
+      </div>
+    )
+  }
+</div>
+
+<script>
+  type SortKey = 'score' | 'recent' | 'price' | 'name';
+
+  const explorer = document.querySelector<HTMLElement>('[data-explorer]');
+  if (explorer) {
+    const grid = explorer.querySelector<HTMLElement>('[data-grid]')!;
+    const cards = [...grid.querySelectorAll<HTMLElement>('[data-salad-card]')];
+    const countLabel = explorer.querySelector<HTMLElement>('[data-count]')!;
+    const emptyState = explorer.querySelector<HTMLElement>('[data-empty]')!;
+    const search = explorer.querySelector<HTMLInputElement>('#hk-search')!;
+    const sortSelect = explorer.querySelector<HTMLSelectElement>('#hk-sort')!;
+    const cityButtons = [...explorer.querySelectorAll<HTMLButtonElement>('[data-city-filter]')];
+    const topButton = explorer.querySelector<HTMLButtonElement>('[data-top-filter]');
+    const viewButtons = [...explorer.querySelectorAll<HTMLButtonElement>('[data-view]')];
+    const panels = {
+      grid: explorer.querySelector<HTMLElement>('[data-panel="grid"]')!,
+      map: explorer.querySelector<HTMLElement>('[data-panel="map"]'),
+    };
+
+    const state = { query: '', city: '', topOnly: false, sort: 'score' as SortKey };
+
+    const num = (card: HTMLElement, key: string, fallback: number) => {
+      const raw = card.dataset[key];
+      const value = raw ? Number.parseFloat(raw) : Number.NaN;
+      return Number.isFinite(value) ? value : fallback;
+    };
+
+    const comparators: Record<SortKey, (a: HTMLElement, b: HTMLElement) => number> = {
+      score: (a, b) => num(b, 'score', 0) - num(a, 'score', 0),
+      recent: (a, b) => (b.dataset.date ?? '').localeCompare(a.dataset.date ?? ''),
+      // Unpriced salads sink to the bottom rather than pretending to be free.
+      price: (a, b) => num(a, 'price', Infinity) - num(b, 'price', Infinity),
+      name: (a, b) => (a.dataset.name ?? '').localeCompare(b.dataset.name ?? '', 'he'),
+    };
+
+    function apply() {
+      const query = state.query.trim().toLowerCase();
+
+      const visible = cards.filter((card) => {
+        const haystack = `${card.dataset.name ?? ''} ${card.dataset.city ?? ''} ${card.dataset.tags ?? ''}`.toLowerCase();
+        if (query && !haystack.includes(query)) return false;
+        if (state.city && card.dataset.city !== state.city) return false;
+        if (state.topOnly && num(card, 'score', 0) < 8) return false;
+        return true;
+      });
+
+      const hidden = cards.filter((card) => !visible.includes(card));
+      hidden.forEach((card) => {
+        card.hidden = true;
+      });
+
+      visible.sort(comparators[state.sort]);
+      visible.forEach((card) => {
+        card.hidden = false;
+        grid.append(card);
+      });
+
+      countLabel.textContent =
+        visible.length === cards.length
+          ? `${cards.length} סלטים`
+          : `${visible.length} מתוך ${cards.length} סלטים`;
+      emptyState.hidden = visible.length > 0;
+      emptyState.classList.toggle('hidden', visible.length > 0);
+
+      const slugs = visible.map((card) => card.dataset.slug ?? '');
+      // Stashed globally too: the map initialises lazily and may miss the event.
+      (window as unknown as { __hkVisibleSlugs?: string[] }).__hkVisibleSlugs = slugs;
+      document.dispatchEvent(new CustomEvent('hk:filter', { detail: { slugs } }));
+    }
+
+    let debounce: number | undefined;
+    search.addEventListener('input', () => {
+      window.clearTimeout(debounce);
+      debounce = window.setTimeout(() => {
+        state.query = search.value;
+        apply();
+      }, 140);
+    });
+
+    sortSelect.addEventListener('change', () => {
+      state.sort = sortSelect.value as SortKey;
+      apply();
+    });
+
+    cityButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        state.city = button.dataset.cityFilter ?? '';
+        cityButtons.forEach((other) =>
+          other.setAttribute('aria-pressed', String(other === button)),
+        );
+        apply();
+      });
+    });
+
+    topButton?.addEventListener('click', () => {
+      state.topOnly = !state.topOnly;
+      topButton.setAttribute('aria-pressed', String(state.topOnly));
+      apply();
+    });
+
+    function setView(view: 'grid' | 'map') {
+      viewButtons.forEach((button) => {
+        const active = button.dataset.view === view;
+        button.setAttribute('aria-pressed', String(active));
+        button.classList.toggle('bg-romaine-700', active);
+        button.classList.toggle('text-white', active);
+        button.classList.toggle('text-ink-soft', !active);
+      });
+      panels.grid.hidden = view !== 'grid';
+      if (panels.map) panels.map.hidden = view !== 'map';
+      if (view === 'map') window.dispatchEvent(new Event('resize'));
+    }
+
+    viewButtons.forEach((button) => {
+      button.addEventListener('click', () => setView(button.dataset.view as 'grid' | 'map'));
+    });
+
+    setView('grid');
+    apply();
+  }
+</script>

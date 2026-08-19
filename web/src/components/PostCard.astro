@@ -1,0 +1,57 @@
+---
+import { formatDate } from '../lib/format';
+import type { Post } from '../lib/types';
+
+interface Props {
+  post: Post;
+  /** Wider treatment with the cover image beside the text */
+  featured?: boolean;
+}
+
+const { post, featured = false } = Astro.props;
+---
+
+<a
+  href={`/blog/${post.slug}`}
+  class:list={[
+    'card group flex overflow-hidden',
+    featured ? 'flex-col sm:flex-row' : 'flex-col',
+  ]}
+>
+  {
+    post.cover && (
+      <div
+        class:list={[
+          'overflow-hidden bg-romaine-50',
+          featured ? 'aspect-[16/10] sm:aspect-auto sm:w-2/5 sm:shrink-0' : 'aspect-[16/9]',
+        ]}
+      >
+        <img
+          src={post.cover.thumb}
+          alt={post.cover.alt}
+          loading="lazy"
+          decoding="async"
+          class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+        />
+      </div>
+    )
+  }
+
+  <div class="flex flex-1 flex-col gap-2 p-5 sm:p-6">
+    <p class="flex items-center gap-2 text-xs text-ink-faint">
+      {post.publishedAt && <time datetime={post.publishedAt}>{formatDate(post.publishedAt)}</time>}
+      <span aria-hidden="true">·</span>
+      <span>{post.readingMinutes} דק׳ קריאה</span>
+    </p>
+
+    <h3 class="font-display text-xl leading-snug text-ink group-hover:text-romaine-700 sm:text-2xl">
+      {post.title}
+    </h3>
+
+    {post.excerpt && <p class="line-clamp-3 text-[15px] leading-relaxed text-ink-soft">{post.excerpt}</p>}
+
+    <span class="mt-auto pt-3 text-sm font-medium text-romaine-700">
+      להמשך קריאה <span class="inline-block transition-transform group-hover:-translate-x-1">←</span>
+    </span>
+  </div>
+</a>

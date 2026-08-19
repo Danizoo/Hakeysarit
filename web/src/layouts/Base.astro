@@ -1,0 +1,72 @@
+---
+import '@fontsource-variable/heebo';
+import '@fontsource-variable/frank-ruhl-libre';
+import '../styles/global.css';
+
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import { getSettings, usingSampleContent } from '../lib/content';
+
+interface Props {
+  title?: string;
+  description?: string;
+  /** Absolute or site-relative image for link previews */
+  image?: string;
+}
+
+const settings = await getSettings();
+const { title, description = settings.tagline, image } = Astro.props;
+
+const pageTitle = title ? `${title} · ${settings.title}` : `${settings.title} — ${settings.tagline}`;
+const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url.origin);
+const ogImage = image ? new URL(image, Astro.site ?? Astro.url.origin).toString() : undefined;
+---
+
+<!doctype html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="generator" content={Astro.generator} />
+
+    <title>{pageTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <meta name="theme-color" content="#faf6ec" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="he_IL" />
+    <meta property="og:site_name" content={settings.title} />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    {ogImage && <meta property="og:image" content={ogImage} />}
+    <meta name="twitter:card" content={ogImage ? 'summary_large_image' : 'summary'} />
+  </head>
+
+  <body class="flex min-h-screen flex-col">
+    <a
+      href="#main"
+      class="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:right-3 focus:z-50 focus:rounded-full focus:bg-romaine-700 focus:px-4 focus:py-2 focus:text-sm focus:text-white"
+    >
+      דילוג לתוכן
+    </a>
+
+    {
+      usingSampleContent && (
+        <div class="bg-gold/15 px-4 py-1.5 text-center text-xs text-ink-soft">
+          תצוגת דוגמה — התוכן שמופיע כאן הוא לדוגמה בלבד, עד שמחברים את מערכת התוכן.
+        </div>
+      )
+    }
+
+    <Header />
+
+    <main id="main" class="flex-1">
+      <slot />
+    </main>
+
+    <Footer />
+  </body>
+</html>

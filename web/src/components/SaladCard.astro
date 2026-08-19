@@ -1,0 +1,99 @@
+---
+import ScoreBadge from './ScoreBadge.astro';
+import Wreath from './Wreath.astro';
+import { formatMonth, formatPrice, scoreBand } from '../lib/format';
+import type { Salad } from '../lib/types';
+
+interface Props {
+  salad: Salad;
+  /** First few cards on a page load eagerly; the rest wait. */
+  eager?: boolean;
+}
+
+const { salad, eager = false } = Astro.props;
+const photo = salad.photos[0];
+const band = scoreBand(salad.score);
+---
+
+<a
+  href={`/salads/${salad.slug}`}
+  class="card group flex h-full flex-col overflow-hidden"
+  data-salad-card
+  data-slug={salad.slug}
+  data-score={salad.score}
+  data-city={salad.city ?? ''}
+  data-tags={salad.tags.join('|')}
+  data-price={salad.price ?? ''}
+  data-date={salad.visitedAt ?? ''}
+  data-name={salad.restaurant}
+>
+  <div class="relative aspect-[5/3] overflow-hidden bg-romaine-50">
+    {
+      photo ? (
+        <img
+          src={photo.thumb}
+          alt={photo.alt}
+          loading={eager ? 'eager' : 'lazy'}
+          decoding="async"
+          class="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+          style={photo.lqip ? `background-image:url(${photo.lqip});background-size:cover` : undefined}
+        />
+      ) : (
+        <div
+          class="grid h-full w-full place-items-center"
+          style="background:linear-gradient(140deg,#e8f0e4,#f6f2e4 55%,#f3e7c9)"
+        >
+          <span class="text-romaine-200 transition-transform duration-500 group-hover:scale-105">
+            <Wreath size={72} />
+          </span>
+        </div>
+      )
+    }
+
+    <div class="absolute top-3 left-3">
+      <div
+        class="grid h-12 w-12 place-items-center rounded-full font-display text-lg font-bold text-white tabular-nums shadow-md ring-2 ring-white/70"
+        style={`background:${band.bg}`}
+      >
+        {salad.score % 1 === 0 ? salad.score : salad.score.toFixed(1)}
+      </div>
+    </div>
+
+    {
+      salad.featured && (
+        <span class="absolute top-3 right-3 rounded-full bg-parchment/95 px-2.5 py-1 text-[11px] font-medium text-gold shadow-sm">
+          ⭐ מומלץ במיוחד
+        </span>
+      )
+    }
+  </div>
+
+  <div class="flex flex-1 flex-col gap-2 p-4 sm:p-5">
+    <div class="flex items-baseline justify-between gap-2">
+      <h3 class="font-display text-lg leading-snug text-ink group-hover:text-romaine-700 sm:text-xl">
+        {salad.restaurant}
+      </h3>
+      {salad.price && <span class="shrink-0 text-sm text-ink-faint tabular-nums">{formatPrice(salad.price)}</span>}
+    </div>
+
+    <p class="text-sm text-ink-faint">
+      {[salad.city, formatMonth(salad.visitedAt)].filter(Boolean).join(' · ')}
+    </p>
+
+    {
+      salad.verdict && (
+        <p class="mt-0.5 line-clamp-3 text-[15px] leading-relaxed text-ink-soft">{salad.verdict}</p>
+      )
+    }
+
+    {
+      salad.tags.length > 0 && (
+        <ul class="mt-auto flex flex-wrap gap-1.5 pt-3">
+          {salad.tags.slice(0, 3).map((tag) => (
+            <li class="rounded-full bg-romaine-50 px-2.5 py-0.5 text-[12px] text-romaine-700">{tag}</li>
+          ))}
+        </ul>
+      )
+    }
+  </div>
+</a>

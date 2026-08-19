@@ -1,0 +1,26 @@
+---
+import Base from '../../layouts/Base.astro';
+import SaladExplorer from '../../components/SaladExplorer.astro';
+import { getSalads, getSettings } from '../../lib/content';
+
+const [salads, settings] = await Promise.all([getSalads(), getSettings()]);
+---
+
+<Base title="הסלטים" description="כל דירוגי סלט הקיסר, ממוינים לפי טעם, מחיר, מקום וזמן.">
+  <section class="mx-auto max-w-5xl px-4 pt-10 pb-16 sm:px-6 sm:pt-14">
+    <header class="mb-8 max-w-2xl">
+      <h1 class="font-display text-3xl text-ink sm:text-4xl">הסלטים</h1>
+      <p class="mt-2 text-[15px] leading-relaxed text-ink-soft sm:text-base">
+        {settings.scaleNote ?? 'הדירוג הוא מ־1 עד 10, והוא לגמרי עניין של טעם אישי.'}
+      </p>
+    </header>
+
+    {
+      salads.length === 0 ? (
+        <p class="card p-10 text-center text-ink-faint">עוד אין כאן דירוגים. בקרוב.</p>
+      ) : (
+        <SaladExplorer salads={salads} />
+      )
+    }
+  </section>
+</Base>

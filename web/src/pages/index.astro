@@ -1,0 +1,125 @@
+---
+import Base from '../layouts/Base.astro';
+import SaladCard from '../components/SaladCard.astro';
+import PostCard from '../components/PostCard.astro';
+import SaladMap from '../components/SaladMap.astro';
+import Wreath from '../components/Wreath.astro';
+import { collectCities, getPosts, getSalads, getSettings } from '../lib/content';
+import { formatScore } from '../lib/format';
+
+const [salads, posts, settings] = await Promise.all([getSalads(), getPosts(), getSettings()]);
+
+const top = [...salads]
+  .sort((a, b) => Number(b.featured ?? false) - Number(a.featured ?? false) || b.score - a.score)
+  .slice(0, 3);
+
+const latestPosts = posts.slice(0, 2);
+const cities = collectCities(salads);
+const average = salads.length
+  ? salads.reduce((sum, salad) => sum + salad.score, 0) / salads.length
+  : 0;
+
+const stats = [
+  { value: String(salads.length), label: salads.length === 1 ? 'סלט' : 'סלטים' },
+  { value: formatScore(Math.round(average * 10) / 10), label: 'ממוצע הדירוגים' },
+  { value: String(cities.length), label: cities.length === 1 ? 'עיר' : 'ערים' },
+];
+---
+
+<Base>
+  <!-- ---------- hero ---------- -->
+  <section class="paper relative overflow-hidden border-b border-line/60">
+    <div class="mx-auto max-w-3xl px-4 py-14 text-center sm:px-6 sm:py-20">
+      <span class="inline-block text-romaine-400"><Wreath size={64} /></span>
+
+      <h1 class="mt-4 font-display text-4xl leading-[1.1] text-ink sm:text-6xl">
+        {settings.title}
+      </h1>
+
+      <p class="mx-auto mt-4 max-w-xl text-base leading-relaxed text-ink-soft sm:text-lg">
+        {settings.heroText ?? settings.tagline}
+      </p>
+
+      <div class="mt-8 flex flex-wrap items-center justify-center gap-3">
+        <a href="/salads" class="btn btn-primary">לכל הסלטים</a>
+        <a href="/blog" class="btn btn-ghost">לכתבות</a>
+      </div>
+
+      {
+        salads.length > 0 && (
+          <ul class="mx-auto mt-12 grid max-w-lg grid-cols-3 gap-3 border-t border-line/70 pt-8">
+            {stats.map((stat) => (
+              <li>
+                <span class="block font-display text-3xl text-romaine-700 tabular-nums sm:text-4xl">
+                  {stat.value}
+                </span>
+                <span class="mt-1 block text-xs text-ink-faint sm:text-sm">{stat.label}</span>
+              </li>
+            ))}
+          </ul>
+        )
+      }
+    </div>
+  </section>
+
+  <!-- ---------- highest rated ---------- -->
+  {
+    top.length > 0 && (
+      <section class="mx-auto max-w-5xl px-4 py-14 sm:px-6 sm:py-16">
+        <div class="mb-6 flex items-end justify-between gap-4">
+          <div>
+            <h2 class="font-display text-2xl text-ink sm:text-3xl">הכי טובים כרגע</h2>
+            <p class="mt-1 text-sm text-ink-faint">הסלטים שהכי שווה לצאת בשבילם מהבית</p>
+          </div>
+          <a href="/salads" class="shrink-0 text-sm font-medium text-romaine-700 hover:underline">
+            הכול ←
+          </a>
+        </div>
+
+        <div class="grid gap-4 sm:grid-cols-2 sm:gap-5 lg:grid-cols-3">
+          {top.map((salad, index) => (
+            <SaladCard salad={salad} eager={index < 3} />
+          ))}
+        </div>
+      </section>
+    )
+  }
+
+  <!-- ---------- map ---------- -->
+  {
+    salads.some((salad) => salad.lat != null) && (
+      <section class="border-y border-line/60 bg-cream-deep/40">
+        <div class="mx-auto max-w-5xl px-4 py-14 sm:px-6 sm:py-16">
+          <div class="mb-6 text-center">
+            <h2 class="font-display text-2xl text-ink sm:text-3xl">איפה זה קרה</h2>
+            <p class="mt-1 text-sm text-ink-faint">כל מסעדה שביקרתי בה, על המפה</p>
+          </div>
+          <SaladMap salads={salads} heightClass="h-[55vh] min-h-[340px] max-h-[520px]" />
+        </div>
+      </section>
+    )
+  }
+
+  <!-- ---------- writing ---------- -->
+  {
+    latestPosts.length > 0 && (
+      <section class="mx-auto max-w-5xl px-4 py-14 sm:px-6 sm:py-16">
+        <div class="mb-6 flex items-end justify-between gap-4">
+          <div>
+            <h2 class="font-display text-2xl text-ink sm:text-3xl">מהמחברת</h2>
+            <p class="mt-1 text-sm text-ink-faint">מחשבות, תהיות, ודברים שלא קשורים לסלט</p>
+          </div>
+          <a href="/blog" class="shrink-0 text-sm font-medium text-romaine-700 hover:underline">
+            הכול ←
+          </a>
+        </div>
+
+        <div class="grid gap-4 sm:gap-5 md:grid-cols-2">
+          {latestPosts.map((post) => (
+            <PostCard post={post} />
+          ))}
+        </div>
+      </section>
+    )
+  }
+</Base>

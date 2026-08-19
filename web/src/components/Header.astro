@@ -1,0 +1,55 @@
+---
+import Wreath from './Wreath.astro';
+import { getSettings } from '../lib/content';
+
+const settings = await getSettings();
+const path = Astro.url.pathname.replace(/\/$/, '') || '/';
+
+const links = [
+  { href: '/salads', label: 'הסלטים' },
+  { href: '/blog', label: 'הכתבות' },
+  { href: '/about', label: 'עליי' },
+];
+
+const isActive = (href: string) => path === href || path.startsWith(`${href}/`);
+---
+
+<header class="sticky top-0 z-40 border-b border-line/70 bg-cream/85 backdrop-blur-md">
+  <div class="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4">
+    <a href="/" class="group flex items-center gap-2.5 sm:gap-3" aria-label={`${settings.title} — לדף הבית`}>
+      <span class="text-romaine-700 transition-transform duration-300 group-hover:-rotate-6">
+        <Wreath size={36} class="sm:hidden" />
+        <Wreath size={44} class="hidden sm:block" />
+      </span>
+      <span class="leading-tight">
+        <span class="block font-display text-xl font-bold tracking-tight text-ink sm:text-2xl">
+          {settings.title}
+        </span>
+        <span class="hidden text-xs text-ink-faint sm:block">דירוגי סלט קיסר</span>
+      </span>
+    </a>
+
+    <nav aria-label="ניווט ראשי">
+      <ul class="flex items-center gap-1 text-sm sm:gap-2 sm:text-[15px]">
+        {
+          links.map((link) => (
+            <li>
+              <a
+                href={link.href}
+                aria-current={isActive(link.href) ? 'page' : undefined}
+                class:list={[
+                  'block rounded-full px-3 py-1.5 transition-colors sm:px-4',
+                  isActive(link.href)
+                    ? 'bg-romaine-100 font-medium text-romaine-900'
+                    : 'text-ink-soft hover:bg-romaine-50 hover:text-romaine-700',
+                ]}
+              >
+                {link.label}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+  </div>
+</header>

@@ -1,0 +1,50 @@
+---
+import Wreath from './Wreath.astro';
+import { getSettings } from '../lib/content';
+
+const settings = await getSettings();
+const year = new Date().getFullYear();
+---
+
+<footer class="mt-20 border-t border-line/70 bg-cream-deep/50">
+  <div class="mx-auto max-w-5xl px-4 py-12 sm:px-6">
+    <div class="flex flex-col items-center gap-5 text-center">
+      <span class="text-romaine-400"><Wreath size={38} /></span>
+
+      <p class="max-w-md text-sm leading-relaxed text-ink-faint">
+        {settings.scaleNote ?? 'הדירוגים כאן הם עניין של טעם אישי, ואין בהם שום דבר מדעי.'}
+      </p>
+
+      <ul class="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm text-ink-soft">
+        <li><a class="hover:text-romaine-700" href="/salads">כל הסלטים</a></li>
+        <li><a class="hover:text-romaine-700" href="/blog">כל הכתבות</a></li>
+        <li><a class="hover:text-romaine-700" href="/about">עליי</a></li>
+        {
+          settings.instagram && (
+            <li>
+              <a
+                class="hover:text-romaine-700"
+                href={settings.instagram}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                אינסטגרם
+              </a>
+            </li>
+          )
+        }
+        {
+          settings.email && (
+            <li>
+              <a class="hover:text-romaine-700" href={`mailto:${settings.email}`}>
+                כתבו לי
+              </a>
+            </li>
+          )
+        }
+      </ul>
+
+      <p class="text-xs text-ink-faint">© {year} {settings.title}. כל הזכויות שמורות.</p>
+    </div>
+  </div>
+</footer>

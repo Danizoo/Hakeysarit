@@ -1,0 +1,191 @@
+---
+import type { Salad } from '../lib/types';
+
+interface Props {
+  salads: Salad[];
+  /** Tailwind height classes for the map frame */
+  heightClass?: string;
+  class?: string;
+}
+
+const { salads, heightClass = 'h-[65vh] min-h-[380px] max-h-[620px]', class: className = '' } = Astro.props;
+
+const points = salads
+  .filter((salad) => salad.lat != null && salad.lng != null)
+  .map((salad) => ({
+    slug: salad.slug,
+    name: salad.restaurant,
+    city: salad.city ?? '',
+    score: salad.score,
+    verdict: salad.verdict ?? '',
+    lat: salad.lat,
+    lng: salad.lng,
+  }));
+
+const missing = salads.length - points.length;
+---
+
+{
+  points.length === 0 ? (
+    <div class:list={['card grid place-items-center p-8 text-center text-sm text-ink-faint', heightClass, className]}>
+      עוד אין מסעדות עם מיקום על המפה.
+    </div>
+  ) : (
+    <div class:list={['relative', className]}>
+      <div
+        id="hk-map"
+        data-points={JSON.stringify(points)}
+        class:list={[
+          'w-full overflow-hidden rounded-3xl border border-line bg-cream-deep shadow-[0_18px_50px_-30px_rgba(29,36,25,0.55)]',
+          heightClass,
+        ]}
+      />
+      {missing > 0 && (
+        <p class="mt-2 text-center text-xs text-ink-faint">
+          {missing === 1 ? 'מסעדה אחת עוד לא הופיעה על המפה' : `${missing} מסעדות עוד לא הופיעו על המפה`}
+        </p>
+      )}
+    </div>
+  )
+}
+
+<script>
+  import L from 'leaflet';
+  import 'leaflet/dist/leaflet.css';
+  import { formatScore, scoreBand } from '../lib/format';
+
+  type Point = {
+    slug: string;
+    name: string;
+    city: string;
+    score: number;
+    verdict: string;
+    lat: number;
+    lng: number;
+  };
+
+  const escapeHtml = (text: string) =>
+    text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+  function initMap(container: HTMLElement) {
+    const points: Point[] = JSON.parse(container.dataset.points ?? '[]');
+    if (!points.length) return;
+
+    // On touch screens the map starts inert so a one-finger swipe scrolls the
+    // page instead of dragging the map. A tap wakes it up.
+    const touch = window.matchMedia('(hover: none)').matches;
+
+    const map = L.map(container, {
+      scrollWheelZoom: false,
+      dragging: !touch,
+      tap: false,
+      zoomControl: true,
+      attributionControl: true,
+    });
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      subdomains: 'abcd',
+      maxZoom: 19,
+    }).addTo(map);
+
+    const markers = points.map((point) => {
+      const band = scoreBand(point.score);
+      const icon = L.divIcon({
+        className: '',
+        html: `<div class="hk-pin" style="background:${band.bg}"><span>${formatScore(point.score)}</span></div>`,
+        iconSize: [38, 38],
+        iconAnchor: [19, 36],
+        popupAnchor: [0, -34],
+      });
+
+      const verdict = point.verdict
+        ? `<p style="margin:0 0 10px;font-size:13px;line-height:1.5;color:#4c563f">${escapeHtml(point.verdict)}</p>`
+        : '';
+
+      const popup = `
+        <div dir="rtl" style="padding:14px 16px;text-align:right;font-family:inherit">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <span style="display:grid;place-items:center;width:30px;height:30px;border-radius:999px;background:${band.bg};color:#fff;font-weight:700;font-size:13px">${formatScore(point.score)}</span>
+            <strong style="font-size:15px;color:#1d2419">${escapeHtml(point.name)}</strong>
+          </div>
+          ${point.city ? `<p style="margin:0 0 8px;font-size:12px;color:#7b8470">${escapeHtml(point.city)}</p>` : ''}
+          ${verdict}
+          <a href="/salads/${encodeURIComponent(point.slug)}" style="font-size:13px;color:#3a5f31;font-weight:500">לביקורת המלאה ←</a>
+        </div>`;
+
+      return L.marker([point.lat, point.lng], { icon, title: point.name }).bindPopup(popup);
+    });
+
+    const group = L.featureGroup(markers).addTo(map);
+    if (points.length === 1) {
+      map.setView([points[0].lat, points[0].lng], 16);
+      markers[0].openPopup();
+    } else {
+      map.fitBounds(group.getBounds(), { padding: [42, 42], maxZoom: 14 });
+    }
+
+    if (touch) {
+      const hint = document.createElement('button');
+      hint.type = 'button';
+      hint.textContent = 'הקישי כדי להזיז את המפה';
+      hint.className =
+        'absolute inset-0 z-[500] grid place-items-center bg-ink/12 text-sm font-medium text-ink backdrop-blur-[1px]';
+      hint.addEventListener('click', () => {
+        map.dragging.enable();
+        hint.remove();
+      });
+      container.parentElement?.appendChild(hint);
+      container.parentElement?.classList.add('relative');
+    }
+
+    // Wheel-zoom only after a deliberate click, so scrolling past never zooms.
+    container.addEventListener('click', () => map.scrollWheelZoom.enable());
+    container.addEventListener('mouseleave', () => map.scrollWheelZoom.disable());
+
+    function showOnly(slugs: string[] | null) {
+      const visible = slugs === null ? null : new Set(slugs);
+      const shown: L.Marker[] = [];
+      markers.forEach((marker, index) => {
+        if (visible === null || visible.has(points[index].slug)) {
+          if (!map.hasLayer(marker)) marker.addTo(map);
+          shown.push(marker);
+        } else if (map.hasLayer(marker)) {
+          map.removeLayer(marker);
+        }
+      });
+      if (shown.length && shown.length !== points.length) {
+        map.flyToBounds(L.featureGroup(shown).getBounds(), {
+          padding: [42, 42],
+          maxZoom: 14,
+          duration: 0.6,
+        });
+      }
+    }
+
+    // The filter bar publishes its result before the map may exist, so read the
+    // last known state on startup as well as listening for changes.
+    const pending = (window as unknown as { __hkVisibleSlugs?: string[] }).__hkVisibleSlugs;
+    if (pending && pending.length !== points.length) showOnly(pending);
+
+    document.addEventListener('hk:filter', (event) => {
+      showOnly((event as CustomEvent<{ slugs: string[] }>).detail.slugs);
+    });
+  }
+
+  const container = document.getElementById('hk-map');
+  if (container) {
+    // Don't pull tiles until the map is near the viewport.
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          observer.disconnect();
+          initMap(container);
+        }
+      },
+      { rootMargin: '250px' },
+    );
+    observer.observe(container);
+  }
+</script>
