@@ -18,13 +18,16 @@ export default defineConfig({
       title: 'התוכן',
       structure: (S) =>
         S.list()
+          .id('root')
           .title('התוכן של האתר')
           .items([
             S.listItem()
+              .id('salads')
               .title('🥗 סלטים')
               .child(S.documentTypeList('salad').title('סלטים').defaultOrdering([{ field: 'visitedAt', direction: 'desc' }])),
 
             S.listItem()
+              .id('posts')
               .title('✍️ כתבות')
               .child(S.documentTypeList('post').title('כתבות').defaultOrdering([{ field: 'publishedAt', direction: 'desc' }])),
 
@@ -32,8 +35,8 @@ export default defineConfig({
 
             // One settings document, always the same one.
             S.listItem()
-              .title('⚙️ הגדרות האתר')
               .id('settings')
+              .title('⚙️ הגדרות האתר')
               .child(S.document().schemaType('settings').documentId('settings').title('הגדרות האתר')),
           ]),
     }),
