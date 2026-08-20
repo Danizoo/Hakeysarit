@@ -1,6 +1,7 @@
 ---
 import Wreath from './Wreath.astro';
 import { formatMonth, formatPrice, scoreBand } from '../lib/format';
+import { tile } from '../lib/tile';
 import type { Salad } from '../lib/types';
 
 interface Props {
@@ -12,6 +13,10 @@ interface Props {
 const { salad, eager = false } = Astro.props;
 const photo = salad.photos[0];
 const band = scoreBand(salad.score);
+const cover = tile(salad.restaurant);
+
+/** With no photo the verdict becomes the cover art, so it isn't repeated below. */
+const verdictInBody = Boolean(photo) && Boolean(salad.verdict);
 ---
 
 <a
@@ -39,12 +44,28 @@ const band = scoreBand(salad.score);
         />
       ) : (
         <div
-          class="grid h-full w-full place-items-center"
-          style="background:linear-gradient(140deg,#e8f0e4,#f6f2e4 55%,#f3e7c9)"
+          class="relative grid h-full w-full place-items-center overflow-hidden px-5 py-6"
+          style={`background:${cover.background}`}
         >
-          <span class="text-romaine-200 transition-transform duration-500 group-hover:scale-105">
-            <Wreath size={72} />
+          <span
+            class="pointer-events-none absolute -right-5 -bottom-6 opacity-[0.14] transition-transform duration-500 group-hover:scale-110"
+            style={`color:${cover.ink}`}
+          >
+            <Wreath size={104} />
           </span>
+
+          {salad.verdict ? (
+            <p
+              class="relative line-clamp-4 text-center font-display text-[17px] leading-snug sm:text-lg"
+              style={`color:${cover.ink}`}
+            >
+              {salad.verdict}
+            </p>
+          ) : (
+            <span class="relative opacity-30" style={`color:${cover.ink}`}>
+              <Wreath size={64} />
+            </span>
+          )}
         </div>
       )
     }
@@ -80,7 +101,7 @@ const band = scoreBand(salad.score);
     </p>
 
     {
-      salad.verdict && (
+      verdictInBody && (
         <p class="mt-0.5 line-clamp-3 text-[15px] leading-relaxed text-ink-soft">{salad.verdict}</p>
       )
     }

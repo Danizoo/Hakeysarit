@@ -5,6 +5,7 @@ import SaladMap from '../../components/SaladMap.astro';
 import Wreath from '../../components/Wreath.astro';
 import { getSalads } from '../../lib/content';
 import { formatDate, formatPrice, formatScore, scoreBand } from '../../lib/format';
+import { tile } from '../../lib/tile';
 import { SUB_SCORE_LABELS, type SubScores } from '../../lib/types';
 
 export async function getStaticPaths() {
@@ -21,6 +22,7 @@ export async function getStaticPaths() {
 
 const { salad, previous, next } = Astro.props;
 const band = scoreBand(salad.score);
+const cover = tile(salad.restaurant);
 const [hero, ...gallery] = salad.photos;
 
 const subScores = Object.entries(salad.subScores ?? {}).filter(
@@ -85,10 +87,10 @@ const description = salad.verdict ?? `סלט קיסר ב${salad.restaurant} — 
         </figure>
       ) : (
         <div
-          class="mt-7 grid aspect-[16/9] w-full place-items-center rounded-3xl border border-line"
-          style="background:linear-gradient(140deg,#e8f0e4,#f6f2e4 55%,#f3e7c9)"
+          class="mt-7 grid aspect-[16/9] w-full place-items-center overflow-hidden rounded-3xl border border-line"
+          style={`background:${cover.background}`}
         >
-          <span class="text-romaine-200"><Wreath size={96} /></span>
+          <span class="opacity-25" style={`color:${cover.ink}`}><Wreath size={112} /></span>
         </div>
       )
     }
