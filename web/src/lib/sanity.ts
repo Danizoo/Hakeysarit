@@ -19,7 +19,10 @@ export const client = sanityConfigured
       projectId,
       dataset,
       apiVersion: '2024-10-01',
-      useCdn: true,
+      // Straight to the live API, not the CDN: a build runs a handful of queries,
+      // and the CDN can serve up to a minute of stale content — which would mean
+      // publishing, rebuilding, and still seeing the old version.
+      useCdn: false,
       perspective: 'published',
     })
   : null;
